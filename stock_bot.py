@@ -3,9 +3,6 @@ import datetime
 import pandas as pd
 import numpy as np
 import yfinance as yf
-import mplfinance as mpf
-import xgboost as xgb
-import os
 import telebot
 from telebot import TeleBot
 import warnings
@@ -16,84 +13,58 @@ CHAT_ID = "1154014789"
 
 bot = TeleBot(TOKEN)
 
-def send_telegram_message(text, photo_path=None):
+def send_telegram_message(text):
     try:
-        if photo_path and os.path.exists(photo_path):
-            with open(photo_path, 'rb') as photo:
-                bot.send_photo(CHAT_ID, photo, caption=text, parse_mode='HTML')
-        else:
-            bot.send_message(CHAT_ID, text, parse_mode='HTML')
-    except:
-        pass
+        bot.send_message(CHAT_ID, text, parse_mode='HTML')
+        print("✅ Telegram 已發送")
+    except Exception as e:
+        print(f"❌ Telegram 發送失敗: {e}")
 
-def plot_candlestick(df, stock_name, code):
-    try:
-        df_plot = df.tail(60).copy()
-        for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-            df_plot[col] = pd.to_numeric(df_plot[col], errors='coerce')
-        df_plot = df_plot.dropna(subset=['Open', 'High', 'Low', 'Close'])
-        if len(df_plot) < 20:
-            return None
-        filename = f"{code}_kline.png"
-        mpf.plot(df_plot, type='candle', style='yahoo', title=f"{stock_name} K線圖",
-                 volume=True, mav=(5,20), savefig=filename, figsize=(12,7))
-        return filename
-    except:
-        return None
+print("🚀 Render 除錯診斷版已啟動...")
+send_telegram_message("✅ 除錯診斷版已啟動！\n開始每60秒發送報告")
 
 def analyze_stock(code, name):
     try:
         df = yf.Ticker(code).history(period="1y")
         if df.empty:
-            return
+            raise ValueError("無法下載資料")
+
         for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         df = df.dropna(subset=['Close', 'Volume'])
 
-        # 技術指標與模型（簡化版）
-        df['Return'] = df['Close'].pct_change()
-        df['MA5'] = df['Close'].rolling(5).mean()
-        df['MA20'] = df['Close'].rolling(20).mean()
-        df['Volume_Ratio'] = (df['Volume'] / df['Volume'].rolling(20).mean()).fillna(1.0)
-        df['Beta'] = 1.0
-
-        np.random.seed(int(time.time()) % 100)
-        df['Trust_NetBuy'] = np.random.normal(0, 3000, len(df)).cumsum()
-        df['Margin_Change'] = np.random.normal(0, 8000, len(df)).cumsum()
-
-        df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
-        df = df.dropna()
-
-        features = ['Close', 'MA5', 'MA20', 'Volatility', 'RSI', 
-                    'Volume_Ratio', 'Beta', 'Trust_NetBuy', 'Margin_Change']
-        model = xgb.XGBClassifier(n_estimators=300, learning_rate=0.05, max_depth=6, random_state=42)
-        model.fit(df[features].iloc[:-30], df['Target'].iloc[:-30])
-
-        latest = df[features].iloc[-1:]
-        prob = model.predict_proba(latest)[0][1]
         price = float(df['Close'].iloc[-1])
+        volume = float(df['Volume'].iloc[-1])
 
-        signal = "🟢 強烈建議買入" if prob > 0.58 else "🔴 建議賣出" if prob < 0.45 else "🟡 建議觀望"
-
-        kline = plot_candlestick(df, name, code)
+        # 模擬資金流
+        np.random.seed(int(time.time()) % 100)
+        foreign = np.random.randint(-8000, 10000)
+        trust = np.random.randint(-3000, 5000)
+        dealer = np.random.randint(-2000, 3000)
+        total = foreign + trust + dealer
 
         message = f"""
-📊 <b>{name} ({code})</b>
+📊 <b>{name} ({code}) 診斷報告</b>
 🕒 {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-💰 股價： <b>{price:,.2f}</b> 元
-📈 上漲機率： <b>{prob:.1%}</b>
-{signal}
+💰 目前股價： <b>{price:,.2f} 元</b>
+📊 成交量： {volume:,.0f} 股
+
+🏦 模擬三大法人：
+• 外資 {foreign:+,} 張
+• 投信 {trust:+,} 張
+• 自營 {dealer:+,} 張
+• 合計 <b>{total:+,} 張</b>
         """
-        send_telegram_message(message, kline)
-        if kline and os.path.exists(kline):
-            os.remove(kline)
-    except:
-        pass
+        send_telegram_message(message)
+        print(f"✅ {name} 報告已發送")
 
-print("🚀 Render 雲端機器人已啟動...")
-send_telegram_message("✅ Render 雲端最終版已成功啟動！\n每60秒自動分析並發送報告")
+    except Exception as e:
+        error_msg = f"❌ {name} 錯誤: {str(e)[:100]}"
+        print(error_msg)
+        send_telegram_message(error_msg)
 
+# ================== 主循環 ==================
 while True:
     analyze_stock("2408.TW", "南亞科")
     analyze_stock("3017.TW", "奇鋐")
