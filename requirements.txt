@@ -3,4 +3,4 @@ mplfinance
 xgboost
 pandas
 numpy
-python-telegram-bot
+pyTelegramBotAPI
