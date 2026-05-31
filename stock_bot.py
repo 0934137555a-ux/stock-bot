@@ -88,16 +88,16 @@ def analyze_stock(code, name):
         df['Volume_Ratio'] = (df['Volume'] / df['Volume'].rolling(20).mean()).fillna(1.0)
         df['Beta'] = 1.0
 
-        # 使用你優化後的最佳參數
+        # Optuna 優化後的最佳參數
         model = xgb.XGBClassifier(
-            n_estimators=400,
-            learning_rate=0.01,
-            max_depth=6,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            gamma=0.1,
-            reg_alpha=0,
-            reg_lambda=5,
+            n_estimators=490,
+            learning_rate=0.03992,
+            max_depth=5,
+            subsample=0.98215,
+            colsample_bytree=0.72707,
+            gamma=1.25012,
+            reg_alpha=4.86512,
+            reg_lambda=6.28947,
             random_state=42
         )
 
@@ -148,8 +148,9 @@ def analyze_stock(code, name):
     except:
         pass
 
-print("🚀 最佳參數 + 真實三大法人版已啟動...")
-send_telegram_message("✅ 最佳參數 + 真實三大法人版已成功啟動！")
+# ================== 啟動 ==================
+print("🚀 Optuna 最佳參數 + 真實三大法人版已啟動...")
+send_telegram_message("✅ Optuna 最佳參數 + 真實三大法人版已成功啟動！")
 
 while True:
     analyze_stock("2408.TW", "南亞科")
